@@ -1,0 +1,24 @@
+services:
+  - name: test-frontend
+    type: LoadBalancer
+    externalPort: 8082
+    internalPort: 8082
+    talkTo: backend
+    pod:
+      count: 2
+      name: frontend
+      label: pod-frontend
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      usage:
+        cpu: 0.3
+        memory: 64
+      rps: 0.5
+      image:
+        repository: maxwang/max-stress-app
+        tag: latest
+        pullPolicy: IfNotPresent

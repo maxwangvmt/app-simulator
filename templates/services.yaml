@@ -1,0 +1,49 @@
+{{- $relname := .Release.Name -}}
+{{- range .Values.services }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .name }}
+  labels:
+    app: {{ .name }}
+spec:
+  type: {{ .type }}
+  ports:
+    - port: {{ .externalPort }}
+      targetPort: {{ .internalPort }}
+      protocol: TCP
+      name: {{ .name }}
+  selector:
+    app: {{ .pod.label }}
+---
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: rc-{{ .name }}
+spec:
+  replicas: {{ .pod.count }}
+  selector:
+    app: {{ .pod.label }}
+  template:
+    metadata:
+      name: {{ .pod.name }}
+      labels:
+        app: {{ .pod.label }}
+    spec:
+      containers:
+      - name: {{ .pod.name }}
+        image: {{ .pod.image.repository }}:{{ .pod.image.tag }}
+        resources:
+          limits:
+            cpu: {{ .pod.limits.cpu }}
+            memory: {{ .pod.limits.memory }}
+          requests:
+            cpu: {{ .pod.requests.cpu }}
+            memory: {{ .pod.requests.memory }}
+        env:
+        - name: MEM_USED_MB
+          value: {{ quote .pod.usage.memory }}
+        - name: CPU_USED_PERCENT
+          value: {{ quote .pod.usage.cpu }}
+---
+{{- end }}
