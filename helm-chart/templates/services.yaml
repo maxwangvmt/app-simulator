@@ -45,5 +45,11 @@ spec:
           value: {{ quote .pod.usage.memory }}
         - name: CPU_USED_PERCENT
           value: {{ quote .pod.usage.cpu }}
+        - name: HTTP_SERVER_PORT
+          value: {{ quote .internalPort }}
+        - name: SVC_TO_TALK
+          value: {{ quote .talkTo }}
+        - name: RPS
+          value: {{ quote .pod.rps }}
 ---
 {{- end }}

@@ -1,4 +1,4 @@
 apiVersion: v1
 description: A Helm chart to deploy a simulated app
-name: app-for-testing-k8s
+name: helm-chart
 version: 0.1.0

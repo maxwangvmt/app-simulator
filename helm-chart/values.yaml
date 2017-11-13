@@ -1,12 +1,12 @@
 services:
-  - name: test-frontend
-    type: LoadBalancer
+  - name: max-test-frontend
+    type: ClusterIP
     externalPort: 8082
     internalPort: 8082
-    talkTo: backend
+    talkTo: max-test-backend
     pod:
-      count: 2
-      name: frontend
+      count: 1
+      name: max-test-frontend
       label: pod-frontend
       limits:
         cpu: 100m
@@ -22,3 +22,27 @@ services:
         repository: maxwang/max-stress-app
         tag: latest
         pullPolicy: IfNotPresent
+  - name: max-test-backend
+    type: ClusterIP
+    externalPort: 8099
+    internalPort: 8099
+    talkTo: max-test-frontend
+    pod:
+      count: 1
+      name: max-test-backend
+      label: pod-backend
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      usage:
+        cpu: 0.6
+        memory: 96
+      rps: 1.0
+      image:
+        repository: maxwang/max-stress-app
+        tag: latest
+        pullPolicy: IfNotPresent
+
