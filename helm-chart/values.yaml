@@ -5,18 +5,18 @@ services:
     internalPort: 8082
     talkTo: max-test-backend
     pod:
-      count: 1
+      count: 2
       name: max-test-frontend
       label: pod-frontend
       limits:
-        cpu: 100m
+        cpu: 500m
         memory: 128Mi
       requests:
         cpu: 100m
         memory: 128Mi
       usage:
         cpu: 0.3
-        memory: 64
+        memory: 64Mi
       rps: 0.5
       image:
         repository: maxwang/max-stress-app
@@ -28,21 +28,25 @@ services:
     internalPort: 8099
     talkTo: max-test-frontend
     pod:
-      count: 1
+      count: 2
       name: max-test-backend
       label: pod-backend
       limits:
-        cpu: 100m
+        cpu: 500m
         memory: 128Mi
       requests:
         cpu: 100m
         memory: 128Mi
       usage:
-        cpu: 0.6
-        memory: 96
+        cpu: 0.5
+        memory: 32Mi
       rps: 1.0
       image:
         repository: maxwang/max-stress-app
         tag: latest
         pullPolicy: IfNotPresent
-
+quota:
+  enabled: false
+  limits:
+    cpu: 2
+    memory: 2Gi
