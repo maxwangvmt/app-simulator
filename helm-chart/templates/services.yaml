@@ -16,14 +16,24 @@ spec:
   selector:
     app: {{ .pod.label }}
 ---
+{{ if eq .controller "ReplicationController" }}
 apiVersion: v1
-kind: ReplicationController
+{{ else }}
+apiVersion: extensions/v1beta1
+{{ end }}
+kind: {{ .controller }}
 metadata:
-  name: rc-{{ .name }}
+  {{ if ne .controller "ReplicationController" }}
+  labels:
+    app: {{ .pod.label }}
+  {{ end }}
+  name: {{ .name }}
 spec:
   replicas: {{ .pod.count }}
+  {{ if eq .controller "ReplicationController" }}
   selector:
     app: {{ .pod.label }}
+  {{ end }}
   template:
     metadata:
       name: {{ .pod.name }}

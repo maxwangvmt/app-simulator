@@ -1,46 +1,72 @@
 services:
-  - name: max-test-frontend
+  - name: s1-rc
     type: ClusterIP
     externalPort: 8082
     internalPort: 8082
-    talkTo: max-test-backend
+    talkTo: s2-dp
+    controller: ReplicationController
     pod:
-      count: 2
-      name: max-test-frontend
+      count: 1
+      name: s1-rc
       label: pod-frontend
       limits:
-        cpu: 500m
-        memory: 128Mi
+        cpu: 400m
+        memory: 256Mi
       requests:
         cpu: 100m
         memory: 128Mi
       usage:
-        cpu: 0.3
-        memory: 64Mi
+        cpu: 0.7
+        memory: 128
       rps: 0.5
       image:
         repository: maxwang/max-stress-app
         tag: latest
         pullPolicy: IfNotPresent
-  - name: max-test-backend
+  - name: s2-dp
     type: ClusterIP
     externalPort: 8099
     internalPort: 8099
-    talkTo: max-test-frontend
+    talkTo: s1-rc
+    controller: Deployment
     pod:
-      count: 2
-      name: max-test-backend
+      count: 1
+      name: s2-dp
       label: pod-backend
       limits:
-        cpu: 500m
+        cpu: 200m
         memory: 128Mi
       requests:
         cpu: 100m
         memory: 128Mi
       usage:
-        cpu: 0.5
-        memory: 32Mi
+        cpu: 0.6
+        memory: 64
       rps: 1.0
+      image:
+        repository: maxwang/max-stress-app
+        tag: latest
+        pullPolicy: IfNotPresent
+  - name: s3-rs
+    type: ClusterIP
+    externalPort: 8099
+    internalPort: 8099
+    talkTo: s1-rc
+    controller: ReplicaSet
+    pod:
+      count: 1
+      name: s3-rs
+      label: pod-s3-rs
+      limits:
+        cpu: 200m
+        memory: 128Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      usage:
+        cpu: 0.6
+        memory: 64
+      rps: 0.1
       image:
         repository: maxwang/max-stress-app
         tag: latest
