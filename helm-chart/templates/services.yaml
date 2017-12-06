@@ -1,9 +1,10 @@
 {{- $relname := .Release.Name -}}
+{{- $image := .Values.image -}}
 {{- range .Values.services }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .name }}
+  name: {{ .name }}-{{ $relname }}
   labels:
     app: {{ .name }}
 spec:
@@ -12,7 +13,7 @@ spec:
     - port: {{ .externalPort }}
       targetPort: {{ .internalPort }}
       protocol: TCP
-      name: {{ .name }}
+#      name: {{ .name }}
   selector:
     app: {{ .pod.label }}
 ---
@@ -27,7 +28,7 @@ metadata:
   labels:
     app: {{ .pod.label }}
   {{ end }}
-  name: {{ .name }}
+  name: {{ .name }}-{{ $relname }}
 spec:
   replicas: {{ .pod.count }}
   {{ if eq .controller "ReplicationController" }}
@@ -42,7 +43,7 @@ spec:
     spec:
       containers:
       - name: {{ .pod.name }}
-        image: {{ .pod.image.repository }}:{{ .pod.image.tag }}
+        image: {{ $image }}
         resources:
           limits:
             cpu: {{ .pod.limits.cpu }}

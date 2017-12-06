@@ -1,4 +1,4 @@
 apiVersion: v1
 description: A Helm chart to deploy a simulated app
-name: helm-chart
-version: 0.1.0
+name: app-sim
+version: beta

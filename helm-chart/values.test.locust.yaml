@@ -1,0 +1,28 @@
+# Default container image to use in pod spec
+image: maxwang/max-stress-app:latest
+
+services:
+  - name: s1-rc
+    type: LoadBalancer
+    externalPort: 8082
+    internalPort: 8082
+    controller: ReplicationController
+    pod:
+      count: 1
+      name: s1-rc
+      label: pod-frontend
+      limits:
+        cpu: 50m
+        memory: 64Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      usage:
+        cpu: 0.01
+        memory: 1
+      rps: 0.0
+quota:
+  enabled: false
+  limits:
+    cpu: 2
+    memory: 2Gi

@@ -1,3 +1,6 @@
+# Default container image to use in pod spec
+image: maxwang/max-stress-app:latest
+
 services:
   - name: s1-rc
     type: ClusterIP
@@ -10,19 +13,15 @@ services:
       name: s1-rc
       label: pod-frontend
       limits:
-        cpu: 400m
-        memory: 256Mi
+        cpu: 50m
+        memory: 64Mi
       requests:
-        cpu: 100m
-        memory: 128Mi
+        cpu: 50m
+        memory: 64Mi
       usage:
-        cpu: 0.7
-        memory: 128
-      rps: 0.5
-      image:
-        repository: maxwang/max-stress-app
-        tag: latest
-        pullPolicy: IfNotPresent
+        cpu: 0.99
+        memory: 50
+      rps: 1.0
   - name: s2-dp
     type: ClusterIP
     externalPort: 8099
@@ -34,19 +33,15 @@ services:
       name: s2-dp
       label: pod-backend
       limits:
-        cpu: 200m
-        memory: 128Mi
+        cpu: 50m
+        memory: 64Mi
       requests:
-        cpu: 100m
-        memory: 128Mi
+        cpu: 50m
+        memory: 64Mi
       usage:
-        cpu: 0.6
-        memory: 64
+        cpu: 0.1
+        memory: 32
       rps: 1.0
-      image:
-        repository: maxwang/max-stress-app
-        tag: latest
-        pullPolicy: IfNotPresent
   - name: s3-rs
     type: ClusterIP
     externalPort: 8099
@@ -58,19 +53,15 @@ services:
       name: s3-rs
       label: pod-s3-rs
       limits:
-        cpu: 200m
-        memory: 128Mi
+        cpu: 50m
+        memory: 64Mi
       requests:
-        cpu: 100m
-        memory: 128Mi
+        cpu: 50m
+        memory: 64Mi
       usage:
-        cpu: 0.6
-        memory: 64
-      rps: 0.1
-      image:
-        repository: maxwang/max-stress-app
-        tag: latest
-        pullPolicy: IfNotPresent
+        cpu: 0.99
+        memory: 50
+      rps: 1.0
 quota:
   enabled: false
   limits:
