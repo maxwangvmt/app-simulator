@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -10,12 +9,24 @@ import (
 	"runtime"
 	"math"
 	"strings"
+	"fmt"
+	"flag"
+
+	"github.com/golang/glog"
 )
 
 //#include <stdlib.h>
 import "C"
 
+const (
+	endpointSplitter = ","
+)
+
 var counter = 0
+
+func init() {
+	flag.Parse()
+}
 
 func main() {
 	// Starting HTTP server
@@ -27,7 +38,7 @@ func main() {
 	// Memory Load
 	totalMB, err := strconv.Atoi(os.Getenv("MEM_USED_MB"))
 	if err != nil {
-		fmt.Printf("Error while getting MEM_USED_MB:\n %v\n", err)
+		fmt.Printf("Error while getting MEM_USED_MB:\n %v", err)
 	} else {
 		totalByte := totalMB * 1024 * 1024
 		memLoadGen(totalByte)
@@ -36,7 +47,7 @@ func main() {
 	// CPU Load
 	loadPercent, err := strconv.ParseFloat(os.Getenv("CPU_USED_PERCENT"), 64)
 	if err != nil {
-		fmt.Printf("Error while getting CPU_USED_PERCENT:\n %v\n", err)
+		fmt.Printf("Error while getting CPU_USED_PERCENT:\n %v", err)
 	} else {
 		cpuLoadGen(loadPercent)
 	}
@@ -44,18 +55,20 @@ func main() {
 	// HTTP Load
 	rps, err := strconv.ParseFloat(os.Getenv("RPS"), 64)
 	if err != nil {
-		fmt.Printf("Error while getting RPS:\n %v\n", err)
+		glog.Errorf("Error while getting RPS: %v", err)
 	} else {
 		svcToTalk := os.Getenv("SVC_TO_TALK")
-		svcEnVar := strings.Replace(strings.ToUpper(svcToTalk), "-", "_", -1)
-		svcHost := os.Getenv(svcEnVar + "_SERVICE_HOST")
-		svcPort := os.Getenv(svcEnVar + "_SERVICE_PORT")
-		svcEndpoint := "http://" + svcHost + ":" + svcPort
+		svcEndpoint, err := getSvcEndpoint(svcToTalk, svcToTalk)
 
-		if svcToTalk == "" || svcHost == "" || svcPort == "" {
-			fmt.Printf("Error while getting service (%s) endpoint: %s\n", svcToTalk, svcEndpoint)
-		} else {
-			httpLoadGen(svcEndpoint, rps)
+		if err != nil {
+			glog.Errorf("Error while gettings service endpoint: %v", err)
+		}
+
+		httpLoadGen(svcEndpoint, rps)
+	}
+
+	for {
+		select {
 		}
 	}
 }
@@ -71,7 +84,7 @@ func cpuLoadGen(loadPercent float64) {
 	numCPUs := runtime.NumCPU()
 	runtime.GOMAXPROCS(numCPUs)
 
-	fmt.Printf("%d percents of CPU usage will be generated for each logical CPU of %d CPUs\n", int(loadPercent*100), numCPUs)
+	fmt.Printf("%d percents of CPU usage will be generated for each logical CPU of %d CPUs", int(loadPercent*100), numCPUs)
 
 	for i := 0; i < numCPUs; i++ {
 		go func() {
@@ -85,11 +98,11 @@ func cpuLoadGen(loadPercent float64) {
 }
 
 func memLoadGen(totalByte int) {
-	fmt.Printf("%d MBs memory will be allocated\n", totalByte/1024/1024)
-
 	if totalByte <= 0 {
 		return
 	}
+
+	fmt.Printf("%d MBs memory will be allocated", totalByte/1024/1024)
 
 	memOccupier := make([]byte, totalByte/2)
 
@@ -99,11 +112,12 @@ func memLoadGen(totalByte int) {
 
 // Send HTTP request to the service svc
 func httpLoadGen(svcEndpoint string, rps float64) {
-	fmt.Printf("HTTP request will be sent to service %s with QPS %f\n", svcEndpoint, rps)
-
 	if rps <= 0 || svcEndpoint == "" {
 		return
 	}
+
+	fmt.Printf("HTTP request will be sent to service %s with QPS %f", svcEndpoint, rps)
+
 	requestTicker := time.NewTicker(time.Duration(float64(time.Second) / rps))
 
 	go func() {
@@ -118,12 +132,39 @@ func httpLoadGen(svcEndpoint string, rps float64) {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("[%s] Received requst at %s from %s\n", os.Getenv("HOSTNAME"), r.URL.Path[1:], r.RemoteAddr)
-	fmt.Fprintf(w, "[%s] %s!", os.Getenv("HOSTNAME"), r.URL.Path[1:])
+	fmt.Printf("Received requst at %s from %s", r.URL.Path[1:], r.RemoteAddr)
+
+	// Send requests to other services
+	svcList := os.Getenv("SVC_LIST_TO_QUERY")
+	responseFromServices := make(map[string]string)
+	if svcList != "" {
+		svcList := strings.Split(svcList, endpointSplitter)
+
+		for _, svc := range svcList {
+			endpoint, err := getSvcEndpoint(svc, svc)
+			if err != nil {
+				glog.Errorf("error while getting endpoint for service %s: %v", svc, err)
+				continue
+			}
+			responseFromServices[svc] = sendRequest(endpoint)
+		}
+	}
+
+	// Process the responses from other services
+	response := r.URL.Path[1:] + ":\n"
+	if len(responseFromServices) > 0 {
+		for svc, res := range responseFromServices {
+			response += svc + " returned " + res + "\n"
+		}
+	}
+
+	fmt.Printf("Response: %s", response)
+
+	fmt.Fprintf(w, "%s", response)
+
 }
 
 func simpleWebServer(addr string) {
-	fmt.Printf("Starting simple server in host %s %s\n", os.Getenv("HOSTNAME"), addr)
 	if addr == "" {
 		return
 	}
@@ -134,20 +175,46 @@ func simpleWebServer(addr string) {
 	}()
 }
 
-func sendRequest(endpoint string) {
-	counter++
-	endpoint = endpoint + "/" + strconv.Itoa(counter)
+func sendRequest(endpoint string) string {
+	fmt.Printf("Sending request to %s", endpoint)
 	resp, err := http.Get(endpoint)
 	if err != nil {
-		fmt.Printf("%v\n", err)
-		return
+		glog.Errorf("Error: %v", err)
+		return ""
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Printf("%v\n", err)
-		return
+		glog.Errorf("Error: %v", err)
+		return ""
 	}
-	fmt.Printf("[%s] says %v\n", endpoint, string(body))
+	fmt.Printf("Received response: %s", string(body))
+	glog.Flush()
+	return string(body)
+}
+
+func getSvcEndpoint(svcName, path string) (string, error) {
+	if svcName == "" {
+		return "", fmt.Errorf("Error while getting service %s with path %s)\n", svcName, path)
+	}
+	svcEnVar := strings.Replace(strings.ToUpper(svcName), "-", "_", -1)
+	svcHost := os.Getenv(svcEnVar + "_SERVICE_HOST")
+	svcPort := os.Getenv(svcEnVar + "_SERVICE_PORT")
+	if svcHost == "" || svcPort == "" {
+		msg := fmt.Errorf("Error while getting service (%s/%s): host=%s, port=%s\n", svcName, path, svcHost, svcPort)
+		glog.Error(msg)
+		return "", msg
+	}
+
+	svcEndpoint := "http://" + svcHost + ":" + svcPort
+
+	if path != "" {
+		if !strings.HasPrefix(path, "/") {
+			svcEndpoint += "/"
+		}
+		svcEndpoint += path
+	}
+
+	return svcEndpoint, nil
 }

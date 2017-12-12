@@ -1,37 +1,17 @@
 # Default container image to use in pod spec
-image: maxwang/max-stress-app:latest
+image: maxwang/appsim:latest
 
 services:
-  - name: s1-rc
+  - name: ui
     type: ClusterIP
     externalPort: 8082
     internalPort: 8082
-    talkTo: s2-dp
+    talkTo: api
     controller: ReplicationController
     pod:
       count: 1
-      name: s1-rc
-      label: pod-frontend
-      limits:
-        cpu: 50m
-        memory: 64Mi
-      requests:
-        cpu: 50m
-        memory: 64Mi
-      usage:
-        cpu: 0.99
-        memory: 50
-      rps: 1.0
-  - name: s2-dp
-    type: ClusterIP
-    externalPort: 8099
-    internalPort: 8099
-    talkTo: s1-rc
-    controller: Deployment
-    pod:
-      count: 1
-      name: s2-dp
-      label: pod-backend
+      name: ui
+      label: pod-ui
       limits:
         cpu: 50m
         memory: 64Mi
@@ -40,18 +20,20 @@ services:
         memory: 64Mi
       usage:
         cpu: 0.1
-        memory: 32
-      rps: 1.0
-  - name: s3-rs
+        memory: 10
+      rps: 0.1
+  - name: api
     type: ClusterIP
-    externalPort: 8099
-    internalPort: 8099
-    talkTo: s1-rc
-    controller: ReplicaSet
+    externalPort: 8082
+    internalPort: 8082
+    talkTo: ui
+    # TODO: Use yaml list
+    svcListToQuery: book,review
+    controller: ReplicationController
     pod:
       count: 1
-      name: s3-rs
-      label: pod-s3-rs
+      name: api
+      label: pod-api
       limits:
         cpu: 50m
         memory: 64Mi
@@ -59,9 +41,51 @@ services:
         cpu: 50m
         memory: 64Mi
       usage:
-        cpu: 0.99
-        memory: 50
-      rps: 1.0
+        cpu: 0
+        memory: 0
+      rps: 0
+  - name: book
+    type: ClusterIP
+    externalPort: 8099
+    internalPort: 8099
+    talkTo: review
+    svcListToQuery: ""
+    controller: Deployment
+    pod:
+      count: 1
+      name: book
+      label: pod-book
+      limits:
+        cpu: 50m
+        memory: 64Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      usage:
+        cpu: 0
+        memory: 0
+      rps: 0
+  - name: review
+    type: ClusterIP
+    externalPort: 8099
+    internalPort: 8099
+    talkTo: book
+    svcListToQuery: ""
+    controller: ReplicaSet
+    pod:
+      count: 1
+      name: review
+      label: pod-review
+      limits:
+        cpu: 50m
+        memory: 64Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      usage:
+        cpu: 0
+        memory: 0
+      rps: 0
 quota:
   enabled: false
   limits:
